@@ -61,6 +61,7 @@ classdef DaqRewardValve < hw.RewardController
               disp('assumed input is required size in ul, if not specify unity type')
               duration = openDurationFor(obj, size);
           end
+          disp(duration)
           sampleRate = obj.DaqSession.Rate;
           nOpenSamples = round(duration*sampleRate);
           samples = [obj.OpenValue*ones(nOpenSamples, 1) ; ...
@@ -79,9 +80,11 @@ classdef DaqRewardValve < hw.RewardController
                   microLitres);
           end
           %JUL 07.07.2015
+          %Hayley edit 2026-06-22 to linear with extrapolation bc this was
+          %crazy
           %interpolation method changed to spline to allow interpolation
           %outside of the calibration range
-          duration = interp1(volumes, durations, microLitres, 'spline');
+          duration = interp1(volumes, durations, microLitres, 'linear', 'extrap');
           %       duration = interp1(volumes, durations, microLitres, 'PCHIP');
       end
       

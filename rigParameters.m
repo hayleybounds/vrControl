@@ -7,7 +7,7 @@ end
 
 % Default Settings:
 rigInfo.computerName = hostname;
-rigInfo.localFigurePosition = [100 200];
+rigInfo.localFigurePosition = [831 60];
 rigInfo.screenNumber = 1;
 rigInfo.screenDist = 10;
 rigInfo.dialogueXYPosition = [100 200];
@@ -128,10 +128,10 @@ switch upper(hostname)
     case 'ZEELAND'
         % Local computer info (basic)
         rigInfo.computerName = 'ZEELAND';
-        rigInfo.localFigurePosition = [4000 100];
+        rigInfo.localFigurePosition = [800 2000];
         rigInfo.screenNumber = 2; % Checked
         rigInfo.screenDist = 10; 
-        rigInfo.dialogueXYPosition = [4000 100]; %to check (parameters for GUI)
+        rigInfo.dialogueXYPosition = [800 2000]; %to check (parameters for GUI)
         
         rigInfo.NIdevID = 'Dev1';
         rigInfo.NIsessRate = 5000;
@@ -186,10 +186,10 @@ switch upper(hostname)
     case 'ZAANLAND'
         % Local computer info (basic)
         rigInfo.computerName = 'ZAANLAND';
-        rigInfo.localFigurePosition = [4500 0];
+        rigInfo.localFigurePosition = [831 -600];
         rigInfo.screenNumber = 2; % Checked
         rigInfo.screenDist = 10; 
-        rigInfo.dialogueXYPosition = [4500 0]; %to check (parameters for GUI)
+        rigInfo.dialogueXYPosition = [900 -900]; %to check (parameters for GUI)
         
         rigInfo.NIdevID = 'Dev1';
         rigInfo.NIsessRate = 5000;
