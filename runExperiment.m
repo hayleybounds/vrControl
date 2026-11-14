@@ -17,7 +17,10 @@ function runExperiment(expSettings)
 % 3. hwInfo: this contains hwInformation like the rotary/lick encoders
 % 4. runInfo: this is continuously updated throughout each trial 
 % 5. trialInfo: this is a struct that stores data collected each trial
-
+%% 0 - added by hayley 19/05/2026. move to directory of this code
+mfile_name          = mfilename('fullpath');
+[pathstr,name,ext]  = fileparts(mfile_name);
+cd(pathstr);
 %% 1. Retrieve rigInfo (hard coded parameters in rigParameters() function)
 
 rigInfo = rigParameters(); 
