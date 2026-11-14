@@ -2,9 +2,21 @@ function [fhandle, runInfo, trialInfo, expInfo] = prepareTrial(rigInfo, hwInfo, 
 
 fhandle =  @operateTrial;
 
-runInfo.currTrial = runInfo.currTrial + 1; 
+% If the training window was closed, we can't read trial parameters -- end the
+% experiment gracefully (data up to the last trial was already saved in trialEnd)
+if expInfo.trainingMode && ~isvalid(updateWindow)
+    VRmessage = sprintf('Training window closed -- ending experiment for animal %s, on date %s, session %s, after trial %d.',...
+        expInfo.animalName, expInfo.dateStr, expInfo.sessionName, runInfo.currTrial);
+    fprintf(2, '%s\n', VRmessage);
+    VRLogMessage(expInfo, VRmessage);
+    runInfo.abort = 1;
+    fhandle = @experimentEnd;
+    return
+end
+
+runInfo.currTrial = runInfo.currTrial + 1;
 runInfo.flipIdx = 0; % Counts flips throughout trial to store data in trialInfo
-runInfo.roomPosition = rigInfo.minimumPosition; % current position
+runInfo.roomPosition = max(rigInfo.minimumPosition, expInfo.startPosition(runInfo.currTrial)); % current position (start position, possibly jittered)
 runInfo.move2NextTrial = 0;
 runInfo.rewardAvailable = 1; % FLAG to determine if reward has been delivered on current trial (set to 0 if delivered)
 runInfo.abort = 0; % turns to 1 if user aborts using the escape key
@@ -19,11 +31,14 @@ runInfo.stopInRewardZone = false; % keep track of behavioral criterion for rewar
 ListenChar(2);
 
 if expInfo.trainingMode
+    % Environment length may be changed in the training window, so keep start inside the corridor
+    runInfo.roomPosition = max(rigInfo.minimumPosition, min(runInfo.roomPosition, updateWindow.envLength.Value - 1));
+
     % Set TRIAL values (update each trial)
     trialInfo.trialIdx(runInfo.currTrial) = runInfo.currTrial; % call me crazy
     trialInfo.startTime(runInfo.currTrial) = GetSecs; % time stamp!!!
     trialInfo.startPosition(runInfo.currTrial) = runInfo.roomPosition; % maybe we'll drop the mice in randomly sometimes...
-    trialInfo.activeLicking(runInfo.currTrial) = updateWindow.lickRequired.Value; 
+    trialInfo.activeLicking(runInfo.currTrial) = updateWindow.lickRequired.Value;
     trialInfo.activeStopping(runInfo.currTrial) = updateWindow.stopDuration.Value * updateWindow.stopRequired.Value; 
     trialInfo.rewardPosition(runInfo.currTrial) = updateWindow.rewardPosition.Value;
     trialInfo.rewardTolerance(runInfo.currTrial) = updateWindow.rewardTolerance.Value;
@@ -35,8 +50,15 @@ if expInfo.trainingMode
     expInfo.rewardPosition(runInfo.currTrial) = updateWindow.rewardPosition.Value; 
     expInfo.rewardTolerance(runInfo.currTrial) = updateWindow.rewardTolerance.Value; 
     expInfo.activeLick(runInfo.currTrial) = updateWindow.lickRequired.Value; 
-    expInfo.activeStop(runInfo.currTrial) = updateWindow.stopDuration.Value * updateWindow.stopRequired.Value; 
-    
+    expInfo.activeStop(runInfo.currTrial) = updateWindow.stopDuration.Value * updateWindow.stopRequired.Value;
+    if updateWindow.maxTrialDuration.Value > 0
+        expInfo.maxDuration = updateWindow.maxTrialDuration.Value; % editable in training window
+    else
+        updateWindow.maxTrialDuration.Value = expInfo.maxDuration; % reject invalid (<=0) entries
+    end
+    % ITI is pre-generated (may be randomized) -- show this trial's value in the window
+    updateWindow.minimumITI.Value = expInfo.intertrialInterval(runInfo.currTrial);
+
     
     rewAvailable = rand() < updateWindow.probReward.Value;
     trialInfo.rewardAvailable(runInfo.currTrial) = rewAvailable;
@@ -68,8 +90,8 @@ else
     end
 end
 
-fprintf('TRIAL#:%d/%d, vrEnv:%d, RP:%.1fcm, AL:%d, AS:%d, MG:%.1f, RewAvailable:%d\n',...
-    runInfo.currTrial, length(expInfo.envIndex), runInfo.vrEnvIdx, expInfo.rewardPosition(runInfo.currTrial),...
+fprintf('TRIAL#:%d/%d, vrEnv:%d, SP:%.1fcm, RP:%.1fcm, AL:%d, AS:%d, MG:%.1f, RewAvailable:%d\n',...
+    runInfo.currTrial, length(expInfo.envIndex), runInfo.vrEnvIdx, runInfo.roomPosition, expInfo.rewardPosition(runInfo.currTrial),...
     expInfo.activeLick(runInfo.currTrial),expInfo.activeStop(runInfo.currTrial),...
     expInfo.mvmtGain(runInfo.currTrial),rewAvailable);
 

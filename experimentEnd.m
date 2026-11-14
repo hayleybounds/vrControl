@@ -14,7 +14,7 @@ VRLogMessage(expInfo, VRmessage);
 VRLogMessage(expInfo);
 VRLogMessage(expInfo);
 
-rigInfo.closeUDPports;
+rigInfo.closeUDPports(rigInfo);
 
 try
     disp(['Copy data from '  expInfo.LocalDir ' to ' expInfo.ServerDir])

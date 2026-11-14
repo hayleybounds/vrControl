@@ -20,24 +20,32 @@ function trialStructure = createTrialStructure(settings)
     % Prepare environment selection across block structure
     assert(sum(settings.blockType)==1, 'Settings file has multiple block types selected...');
     blockType = settings.blockTypeNames{settings.blockType};
+    cTrial = initBlockLength;
+    idxActive = returnOrder(settings.vrOrder, settings.vrActive);
+    numActive = length(idxActive);
     switch lower(blockType)
         case 'preset'
             getBlockLength = @(envidx) settings.blockTrialsPer(envidx);
         case 'random'
-            if strcmpi(settings.blockRandomDistributionName,'poisson')
-                % Don't allow blocks of length 0
-                getBlockLength = @(envidx) max([1, poissrnd(settings.blockRandomMean(envidx))]);
-            else
-                error('didn''t recognize random block length distribution');
+            % Pseudo-random cycles: each cycle contains exactly blockRandomMean(env)
+            % trials of each active environment, in shuffled order. Cycles repeat
+            % (with a new shuffle each time) until maxTrials is reached.
+            cycleCounts = round(settings.blockRandomMean(idxActive));
+            if any(cycleCounts < 0) || sum(cycleCounts) == 0
+                error('Random block trial counts must be non-negative and not all zero.');
+            end
+            cycleEnvs = repelem(idxActive(:), cycleCounts(:));
+            while cTrial < trialStructure.maxTrials
+                cycle = cycleEnvs(randperm(numel(cycleEnvs)));
+                numAdd = min(numel(cycle), trialStructure.maxTrials - cTrial);
+                trialStructure.envIndex(cTrial + (1:numAdd)) = cycle(1:numAdd);
+                cTrial = cTrial + numAdd;
             end
         otherwise
             error('earlier error message is logically broken...');
     end
-    
-    % Perform environment selection
-    cTrial = initBlockLength;
-    idxActive = returnOrder(settings.vrOrder, settings.vrActive);
-    numActive = length(idxActive);
+
+    % Perform environment selection (preset blocks; random cycles already filled in above)
     if numActive > 1
         if ~isempty(settings.initEnvIdx)
             prevEnvFlag = ismember(idxActive, settings.initEnvIdx) * logical(initBlockLength); % Flags init environment unless there isn't one
@@ -96,29 +104,71 @@ function trialStructure = createTrialStructure(settings)
         trialStructure.activeLick = ones(trialStructure.maxTrials, 1);
         trialStructure.activeStop = ones(trialStructure.maxTrials, 1);
         trialStructure.mvmtGain = ones(trialStructure.maxTrials, 1);
+        startPosition = zeros(trialStructure.maxTrials, 1);
 
         envUsed = unique(trialStructure.envIndex(:)');
         for envidx = envUsed(:)'
             idx_trials = find(trialStructure.envIndex == envidx);
             num_trials = length(idx_trials);
-            [probReward, activeLick, activeStop, mvmtGain] = generateTrialStructure(settings, num_trials, true, envidx);
+            [probReward, activeLick, activeStop, mvmtGain, startPos] = generateTrialStructure(settings, num_trials, true, envidx);
             trialStructure.probReward(idx_trials) = probReward;
             trialStructure.activeLick(idx_trials) = activeLick;
             trialStructure.activeStop(idx_trials) = activeStop;
             trialStructure.mvmtGain(idx_trials) = mvmtGain;
-        end            
-    else 
-        [probReward, activeLick, activeStop, mvmtGain] = generateTrialStructure(settings, trialStructure.maxTrials, false);
+            startPosition(idx_trials) = startPos;
+        end
+    else
+        [probReward, activeLick, activeStop, mvmtGain, startPosition] = generateTrialStructure(settings, trialStructure.maxTrials, false);
         trialStructure.probReward = probReward;
         trialStructure.activeLick = activeLick;
         trialStructure.activeStop = activeStop;
         trialStructure.mvmtGain = mvmtGain;
     end
+
+    % Start position jitter: keep start inside the corridor
+    startPosition = startPosition(:);
+    maxStart = trialStructure.roomLength(:) - 1; % don't start at (or past) the end of the corridor
+    clippedStart = min(max(startPosition, 0), maxStart);
+    if any(clippedStart ~= startPosition)
+        warning('createTrialStructure:startPositionClipped', ...
+            '%d/%d trial start positions were clipped to lie within [0, roomLength-1].', ...
+            sum(clippedStart ~= startPosition), trialStructure.maxTrials);
+    end
+    if any(clippedStart >= trialStructure.rewardPosition(:))
+        warning('createTrialStructure:startPastReward', ...
+            '%d/%d trials start at or beyond the reward position.', ...
+            sum(clippedStart >= trialStructure.rewardPosition(:)), trialStructure.maxTrials);
+    end
+    trialStructure.startPosition = clippedStart;
 end
 
 
 
-function [probReward, activeLick, activeStop, mvmtGain] = generateTrialStructure(settings, numTrials, useEnvSpecificSettings, vrEnvIndex)
+function [probReward, activeLick, activeStop, mvmtGain, startPosition] = generateTrialStructure(settings, numTrials, useEnvSpecificSettings, vrEnvIndex)
+    % Start position jitter settings (optional fields so older settings files
+    % still work -> start at 0)
+    condStartPos = false; condTrialStartCenter = []; condTrialStartWidth = [];
+    startPosCenter = 0; startPosWidth = 0;
+    if useEnvSpecificSettings
+        if isfield(settings,'vrCondStartPos') && numel(settings.vrCondStartPos) >= vrEnvIndex
+            condStartPos = settings.vrCondStartPos{vrEnvIndex};
+            condTrialStartCenter = settings.vrCondTrialStartCenter{vrEnvIndex};
+            condTrialStartWidth = settings.vrCondTrialStartWidth{vrEnvIndex};
+        end
+        if isfield(settings,'vrStartPosCenter') && numel(settings.vrStartPosCenter) >= vrEnvIndex
+            startPosCenter = settings.vrStartPosCenter{vrEnvIndex};
+            startPosWidth = settings.vrStartPosWidth{vrEnvIndex};
+        end
+    else
+        if isfield(settings,'condStartPos') && ~isempty(settings.condStartPos)
+            condStartPos = settings.condStartPos;
+            condTrialStartCenter = settings.condTrialStartCenter;
+            condTrialStartWidth = settings.condTrialStartWidth;
+        end
+        if isfield(settings,'startPosCenter') && ~isempty(settings.startPosCenter), startPosCenter = settings.startPosCenter; end
+        if isfield(settings,'startPosWidth') && ~isempty(settings.startPosWidth), startPosWidth = settings.startPosWidth; end
+    end
+
     if useEnvSpecificSettings
         % Use settings for given environment
         condReward = settings.vrCondProbRew{vrEnvIndex};
@@ -177,7 +227,17 @@ function [probReward, activeLick, activeStop, mvmtGain] = generateTrialStructure
         activeLick = condTrialActiveLicking(condTrialIdx)';
         activeStop = condTrialActiveStopping(condTrialIdx)';
         mvmtGain = condTrialGain(condTrialIdx)';
+        if condStartPos
+            startCenter = condTrialStartCenter(condTrialIdx);
+            startWidth = condTrialStartWidth(condTrialIdx);
+        end
     end
+    if ~condStartPos || (numCond == 0)
+        startCenter = startPosCenter * ones(numTrials, 1);
+        startWidth = startPosWidth * ones(numTrials, 1);
+    end
+    % start ~ Uniform(center - width, center + width)
+    startPosition = startCenter(:) + abs(startWidth(:)) .* (2*rand(numTrials, 1) - 1);
 
     % Overwrite (or write) arrays for independent generation
     if ~condReward || (numCond == 0)
