@@ -197,7 +197,7 @@ switch upper(hostname)
         rigInfo.NILicEnc = ''; 
         rigInfo.NIRewVal = 'ao0';
         rigInfo.photodiodePos  = 'right';
-        rigInfo.photodiodeSize = [100 75]; % [650 190] %% Enny: CHECK   %[250 75];
+        rigInfo.photodiodeSize = [450 125]; % [650 190] %% Enny: CHECK   %[250 75];
         rigInfo.rotEncPos = 'left'; 
         rigInfo.rotEncSign = -1; 
         rigInfo.wheelToVR = 4000;
@@ -217,8 +217,10 @@ switch upper(hostname)
 
         % Saving directories: remote
         rigInfo.dirSave = 'C:\Users\Experiment\Documents\animalData';
-        rigInfo.dirScreenCalib = 'C:\Users\Experiment\Documents\GitHub\vrControlGratings';
-        rigInfo.filenameScreenCalib = 'halfcyclindercalib_22102021.mat';
+        %rigInfo.dirScreenCalib = 'C:\Users\Experiment\Documents\GitHub\vrControlGratings';
+        %rigInfo.filenameScreenCalib = 'halfcyclindercalib_22102021.mat';
+        rigInfo.dirScreenCalib = 'C:\Users\Experiment\Documents\MATLAB\linearTrackBehavior\';
+        rigInfo.filenameScreenCalib = 'halfcyclindercalib.mat';
         rigInfo.doScreenTransform = true;
         rigInfo.doScreenFlip = true;
         
