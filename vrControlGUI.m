@@ -1552,6 +1552,7 @@ classdef vrControlGUI < matlab.apps.AppBase
             % Load settings from current GUI window
             defaultSettings = generateOutputStructure(app);
             settingNames = fieldnames(defaultSettings);
+            missingFields = {};
             for nf = 1:length(settingNames)
                 % If the GUI has been updated to include new things, but
                 % the settings file hasn't reflected that yet, then add the
@@ -1560,8 +1561,12 @@ classdef vrControlGUI < matlab.apps.AppBase
                 field = settingNames{nf};
                 if ~isfield(settings,field)
                     settings.(field) = defaultSettings.(field);
-                    fprintf(2,'GUI contains parameter not found in loaded settings. ParameterName:{%s}\n',field);
+                    missingFields{end+1} = field; %#ok<AGROW>
                 end
+            end
+            if ~isempty(missingFields)
+                fprintf(2,'Loaded settings had no value for %d parameter(s), using current GUI values: %s\n', ...
+                    length(missingFields), strjoin(missingFields, ', '));
             end
             app.vrDirectory.Value = persistentVariables('vrDirectory',settings.vrDirectory);
             app.vrExtension.Value = persistentVariables('vrExtension',settings.vrExtension);
