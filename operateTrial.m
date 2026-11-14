@@ -107,7 +107,7 @@ while ~runInfo.move2NextTrial && ~runInfo.abort
     
     % --- mouse behavior --- reward zone entry ---
     runInfo.inRewardZone = abs(runInfo.roomPosition - expInfo.rewardPosition(runInfo.currTrial)) < expInfo.rewardTolerance(runInfo.currTrial);
-    trialInfo.inRewardZone(runInfo.currTrial, runInfo.flipIdx) = 1;
+    trialInfo.inRewardZone(runInfo.currTrial, runInfo.flipIdx) = runInfo.inRewardZone;
     
     % --- mouse behavior --- LICKS ---
     if expInfo.lickEncoder && ~rigInfo.useKeyboard
@@ -160,7 +160,7 @@ while ~runInfo.move2NextTrial && ~runInfo.abort
         trialInfo.stop(runInfo.currTrial,runInfo.flipIdx) = 1;
         runInfo.stopInRewardZone = true; % indicate that the mouse stopped in the reward zone
         if expInfo.useUpdateWindow && isvalid(updateWindow)
-            updateWindow.updateStopLamp(0);
+            updateWindow.updateStopLamp(1);
             drawnow()
         end
     end

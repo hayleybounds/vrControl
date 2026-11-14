@@ -2,7 +2,19 @@ function [fhandle, runInfo, trialInfo, expInfo] = prepareTrial(rigInfo, hwInfo, 
 
 fhandle =  @operateTrial;
 
-runInfo.currTrial = runInfo.currTrial + 1; 
+% If the training window was closed, we can't read trial parameters -- end the
+% experiment gracefully (data up to the last trial was already saved in trialEnd)
+if expInfo.trainingMode && ~isvalid(updateWindow)
+    VRmessage = sprintf('Training window closed -- ending experiment for animal %s, on date %s, session %s, after trial %d.',...
+        expInfo.animalName, expInfo.dateStr, expInfo.sessionName, runInfo.currTrial);
+    fprintf(2, '%s\n', VRmessage);
+    VRLogMessage(expInfo, VRmessage);
+    runInfo.abort = 1;
+    fhandle = @experimentEnd;
+    return
+end
+
+runInfo.currTrial = runInfo.currTrial + 1;
 runInfo.flipIdx = 0; % Counts flips throughout trial to store data in trialInfo
 runInfo.roomPosition = max(rigInfo.minimumPosition, expInfo.startPosition(runInfo.currTrial)); % current position (start position, possibly jittered)
 runInfo.move2NextTrial = 0;
@@ -38,8 +50,15 @@ if expInfo.trainingMode
     expInfo.rewardPosition(runInfo.currTrial) = updateWindow.rewardPosition.Value; 
     expInfo.rewardTolerance(runInfo.currTrial) = updateWindow.rewardTolerance.Value; 
     expInfo.activeLick(runInfo.currTrial) = updateWindow.lickRequired.Value; 
-    expInfo.activeStop(runInfo.currTrial) = updateWindow.stopDuration.Value * updateWindow.stopRequired.Value; 
-    
+    expInfo.activeStop(runInfo.currTrial) = updateWindow.stopDuration.Value * updateWindow.stopRequired.Value;
+    if updateWindow.maxTrialDuration.Value > 0
+        expInfo.maxDuration = updateWindow.maxTrialDuration.Value; % editable in training window
+    else
+        updateWindow.maxTrialDuration.Value = expInfo.maxDuration; % reject invalid (<=0) entries
+    end
+    % ITI is pre-generated (may be randomized) -- show this trial's value in the window
+    updateWindow.minimumITI.Value = expInfo.intertrialInterval(runInfo.currTrial);
+
     
     rewAvailable = rand() < updateWindow.probReward.Value;
     trialInfo.rewardAvailable(runInfo.currTrial) = rewAvailable;

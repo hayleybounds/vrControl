@@ -239,6 +239,7 @@ if expInfo.trainingMode
     updateWindow.setCurrentTrial(1);
     updateWindow.envIdx.Value = expInfo.envIndex(1);
     updateWindow.minimumITI.Value = expInfo.intertrialInterval(1);
+    updateWindow.maxTrialDuration.Value = expInfo.maxDuration;
     updateWindow.envLength.Value = expInfo.roomLength(1);
     updateWindow.mvmtGain.Value = expInfo.mvmtGain(1);
     updateWindow.rewardPosition.Value = expInfo.rewardPosition(1);
@@ -279,11 +280,68 @@ end
 
 runInfo.ititimer = tic; % Initialize this here (usually reset in operateTrial)
 fhandle = @prepareTrial;
-while ~isempty(fhandle) 
-    % main loop, active during experiment
-    [fhandle, runInfo, trialInfo, expInfo] = feval(fhandle, rigInfo, hwInfo, expInfo, runInfo, trialInfo, updateWindow);
+try
+    while ~isempty(fhandle)
+        % main loop, active during experiment
+        [fhandle, runInfo, trialInfo, expInfo] = feval(fhandle, rigInfo, hwInfo, expInfo, runInfo, trialInfo, updateWindow);
+    end
+catch ME
+    % Any error during the experiment: save what we have, shut down hardware &
+    % screen, tell other rig PCs the experiment ended, then rethrow the error
+    emergencyShutdown(ME, rigInfo, hwInfo, expInfo, runInfo, trialInfo);
+    rethrow(ME);
 end
 
 fprintf(['TotalValveOpen = ' num2str(runInfo.totalValveOpenTime) ' ul\n']);
 close all;
+end
+
+
+function emergencyShutdown(ME, rigInfo, hwInfo, expInfo, runInfo, trialInfo)
+% Each step is wrapped separately so that one failure doesn't prevent the rest
+fprintf(2, '\n#### vrControl crashed during trial %d: %s\n', runInfo.currTrial, ME.message);
+fprintf(2, '#### Saving data and shutting down...\n');
+
+% Give keyboard back to MATLAB first, so the command window is usable
+try ListenChar(0); catch, end
+try Priority(0); catch, end
+
+% Save data (same file trialEnd writes, plus the error). trialInfo contains
+% everything up to the start of the trial in which the error occurred.
+try
+    crashError = ME; %#ok<NASGU>
+    save(sprintf('%s_trial', expInfo.SESSION_NAME), 'trialInfo', 'expInfo', 'rigInfo', 'crashError');
+    fprintf(2, '#### Data saved to %s_trial.mat\n', expInfo.SESSION_NAME);
+catch saveErr
+    fprintf(2, '#### FAILED to save data: %s\n', saveErr.message);
+end
+
+% Log and notify other rig PCs (timeline, cameras) that the experiment ended
+try
+    VRmessage = sprintf('CRASH for animal %s, on date %s, session %s, trialNum %d: %s', ...
+        expInfo.animalName, expInfo.dateStr, expInfo.sessionName, runInfo.currTrial, ME.message);
+    VRLogMessage(expInfo, VRmessage);
+catch, end
+try
+    rigInfo.sendUDPmessage(rigInfo, ['ExpEnd ' expInfo.animalName ' ' expInfo.dateStr ' ' expInfo.sessionName]);
+catch, end
+try rigInfo.closeUDPports(rigInfo); catch, end
+try pnet('closeall'); catch, end
+
+% Make sure the reward valve is closed
+try
+    if isfield(hwInfo, 'rewVal') && rigInfo.useAnalogRewardValve
+        hwInfo.rewVal.close;
+    end
+catch, end
+
+try Screen('CloseAll'); catch, end
+
+% Copy data to server
+try
+    copyfile(expInfo.LocalDir, expInfo.ServerDir);
+    fprintf(2, '#### Data copied to %s\n', expInfo.ServerDir);
+catch copyErr
+    fprintf(2, '#### FAILED to copy data to server: %s\n', copyErr.message);
+end
 end
