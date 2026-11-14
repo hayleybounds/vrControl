@@ -128,10 +128,10 @@ switch upper(hostname)
     case 'ZEELAND'
         % Local computer info (basic)
         rigInfo.computerName = 'ZEELAND';
-        rigInfo.localFigurePosition = [800 2000];
+        rigInfo.localFigurePosition = [1300, -900];
         rigInfo.screenNumber = 2; % Checked
         rigInfo.screenDist = 10; 
-        rigInfo.dialogueXYPosition = [800 2000]; %to check (parameters for GUI)
+        rigInfo.dialogueXYPosition = [1300, -900]; %to check (parameters for GUI)
         
         rigInfo.NIdevID = 'Dev1';
         rigInfo.NIsessRate = 5000;
@@ -139,7 +139,7 @@ switch upper(hostname)
         rigInfo.NILicEnc = ''; 
         rigInfo.NIRewVal = 'ao0';
         rigInfo.photodiodePos  = 'right';
-        rigInfo.photodiodeSize = [100 75]; % [650 190] %% Enny: CHECK   %[250 75];
+        rigInfo.photodiodeSize = [460 145]; % [650 190] %% Enny: CHECK   %[250 75];
         rigInfo.rotEncPos = 'left'; 
         rigInfo.rotEncSign = -1; 
         rigInfo.wheelToVR = 4000;

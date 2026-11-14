@@ -69,7 +69,7 @@ classdef DaqRewardValve_Analog < hw.RewardController
       %JUL 07.07.2015
       %interpolation method changed to spline to allow interpolation
       %outside of the calibration range
-      duration = interp1(volumes, durations, microLitres, 'spline');
+      duration = interp1(volumes, durations, microLitres, 'linear', 'extrap');
 %       duration = interp1(volumes, durations, microLitres, 'PCHIP');
     end
     function ul = microLitresFromDuration(obj, duration)
