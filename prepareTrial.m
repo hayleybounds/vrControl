@@ -4,7 +4,7 @@ fhandle =  @operateTrial;
 
 runInfo.currTrial = runInfo.currTrial + 1; 
 runInfo.flipIdx = 0; % Counts flips throughout trial to store data in trialInfo
-runInfo.roomPosition = rigInfo.minimumPosition; % current position
+runInfo.roomPosition = max(rigInfo.minimumPosition, expInfo.startPosition(runInfo.currTrial)); % current position (start position, possibly jittered)
 runInfo.move2NextTrial = 0;
 runInfo.rewardAvailable = 1; % FLAG to determine if reward has been delivered on current trial (set to 0 if delivered)
 runInfo.abort = 0; % turns to 1 if user aborts using the escape key
@@ -19,11 +19,14 @@ runInfo.stopInRewardZone = false; % keep track of behavioral criterion for rewar
 ListenChar(2);
 
 if expInfo.trainingMode
+    % Environment length may be changed in the training window, so keep start inside the corridor
+    runInfo.roomPosition = max(rigInfo.minimumPosition, min(runInfo.roomPosition, updateWindow.envLength.Value - 1));
+
     % Set TRIAL values (update each trial)
     trialInfo.trialIdx(runInfo.currTrial) = runInfo.currTrial; % call me crazy
     trialInfo.startTime(runInfo.currTrial) = GetSecs; % time stamp!!!
     trialInfo.startPosition(runInfo.currTrial) = runInfo.roomPosition; % maybe we'll drop the mice in randomly sometimes...
-    trialInfo.activeLicking(runInfo.currTrial) = updateWindow.lickRequired.Value; 
+    trialInfo.activeLicking(runInfo.currTrial) = updateWindow.lickRequired.Value;
     trialInfo.activeStopping(runInfo.currTrial) = updateWindow.stopDuration.Value * updateWindow.stopRequired.Value; 
     trialInfo.rewardPosition(runInfo.currTrial) = updateWindow.rewardPosition.Value;
     trialInfo.rewardTolerance(runInfo.currTrial) = updateWindow.rewardTolerance.Value;
@@ -68,8 +71,8 @@ else
     end
 end
 
-fprintf('TRIAL#:%d/%d, vrEnv:%d, RP:%.1fcm, AL:%d, AS:%d, MG:%.1f, RewAvailable:%d\n',...
-    runInfo.currTrial, length(expInfo.envIndex), runInfo.vrEnvIdx, expInfo.rewardPosition(runInfo.currTrial),...
+fprintf('TRIAL#:%d/%d, vrEnv:%d, SP:%.1fcm, RP:%.1fcm, AL:%d, AS:%d, MG:%.1f, RewAvailable:%d\n',...
+    runInfo.currTrial, length(expInfo.envIndex), runInfo.vrEnvIdx, runInfo.roomPosition, expInfo.rewardPosition(runInfo.currTrial),...
     expInfo.activeLick(runInfo.currTrial),expInfo.activeStop(runInfo.currTrial),...
     expInfo.mvmtGain(runInfo.currTrial),rewAvailable);
 

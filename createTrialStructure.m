@@ -20,24 +20,32 @@ trialStructure.envIndex(1:initBlockLength) = settings.initEnvIdx;
 % Prepare environment selection across block structure
 assert(sum(settings.blockType)==1, 'Settings file has multiple block types selected...');
 blockType = settings.blockTypeNames{settings.blockType};
+cTrial = initBlockLength;
+idxActive = returnOrder(settings.vrOrder, settings.vrActive);
+numActive = length(idxActive);
 switch lower(blockType)
     case 'preset'
         getBlockLength = @(envidx) settings.blockTrialsPer(envidx);
     case 'random'
-        if strcmpi(settings.blockRandomDistributionName,'poisson')
-            % Don't allow blocks of length 0
-            getBlockLength = @(envidx) max([1, poissrnd(settings.blockRandomMean(envidx))]);
-        else
-            error('didn''t recognize random block length distribution');
+        % Pseudo-random cycles: each cycle contains exactly blockRandomMean(env)
+        % trials of each active environment, in shuffled order. Cycles repeat
+        % (with a new shuffle each time) until maxTrials is reached.
+        cycleCounts = round(settings.blockRandomMean(idxActive));
+        if any(cycleCounts < 0) || sum(cycleCounts) == 0
+            error('Random block trial counts must be non-negative and not all zero.');
+        end
+        cycleEnvs = repelem(idxActive(:), cycleCounts(:));
+        while cTrial < trialStructure.maxTrials
+            cycle = cycleEnvs(randperm(numel(cycleEnvs)));
+            numAdd = min(numel(cycle), trialStructure.maxTrials - cTrial);
+            trialStructure.envIndex(cTrial + (1:numAdd)) = cycle(1:numAdd);
+            cTrial = cTrial + numAdd;
         end
     otherwise
         error('earlier error message is logically broken...');
 end
 
-% Perform environment selection
-cTrial = initBlockLength;
-idxActive = returnOrder(settings.vrOrder, settings.vrActive);
-numActive = length(idxActive);
+% Perform environment selection (preset blocks; random cycles already filled in above)
 if numActive > 1
     if ~isempty(settings.initEnvIdx)
         prevEnvFlag = ismember(idxActive, settings.initEnvIdx) * logical(initBlockLength); % Flags init environment unless there isn't one
@@ -140,4 +148,34 @@ if ~settings.condGain
         trialStructure.mvmtGain = settings.movementGain * ones(trialStructure.maxTrials,1);
     end
 end
+
+% Start position jitter: start ~ Uniform(center - width, center + width)
+% (fields are optional so that older settings files still work -> start at 0)
+condStartPos = isfield(settings,'condStartPos') && settings.condStartPos;
+if condStartPos
+    startCenter = settings.condTrialStartCenter(condTrialIdx);
+    startWidth = settings.condTrialStartWidth(condTrialIdx);
+else
+    startCenter = 0; startWidth = 0;
+    if isfield(settings,'startPosCenter') && ~isempty(settings.startPosCenter), startCenter = settings.startPosCenter; end
+    if isfield(settings,'startPosWidth') && ~isempty(settings.startPosWidth), startWidth = settings.startPosWidth; end
+    startCenter = startCenter * ones(trialStructure.maxTrials,1);
+    startWidth = startWidth * ones(trialStructure.maxTrials,1);
+end
+startCenter = startCenter(:);
+startWidth = abs(startWidth(:));
+startPosition = startCenter + startWidth .* (2*rand(trialStructure.maxTrials,1) - 1);
+maxStart = trialStructure.roomLength(:) - 1; % don't start at (or past) the end of the corridor
+clippedStart = min(max(startPosition, 0), maxStart);
+if any(clippedStart ~= startPosition)
+    warning('createTrialStructure:startPositionClipped', ...
+        '%d/%d trial start positions were clipped to lie within [0, roomLength-1].', ...
+        sum(clippedStart ~= startPosition), trialStructure.maxTrials);
+end
+if any(clippedStart >= trialStructure.rewardPosition(:))
+    warning('createTrialStructure:startPastReward', ...
+        '%d/%d trials start at or beyond the reward position.', ...
+        sum(clippedStart >= trialStructure.rewardPosition(:)), trialStructure.maxTrials);
+end
+trialStructure.startPosition = clippedStart;
 
