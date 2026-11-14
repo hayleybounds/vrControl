@@ -128,10 +128,10 @@ switch upper(hostname)
     case 'ZEELAND'
         % Local computer info (basic)
         rigInfo.computerName = 'ZEELAND';
-        rigInfo.localFigurePosition = [900 -900];
+        rigInfo.localFigurePosition = [1300, -900];
         rigInfo.screenNumber = 2; % Checked
         rigInfo.screenDist = 10; 
-        rigInfo.dialogueXYPosition = [900 -900]; %to check (parameters for GUI)
+        rigInfo.dialogueXYPosition = [1300, -900]; %to check (parameters for GUI)
         
         rigInfo.NIdevID = 'Dev1';
         rigInfo.NIsessRate = 5000;

@@ -1,2 +1,4 @@
 *.asv
 settingsFolder/*.mat
+*.png
+/stash
