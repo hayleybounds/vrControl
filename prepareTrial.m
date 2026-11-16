@@ -69,6 +69,7 @@ if expInfo.trainingMode
     updateWindow.setRewardAvailable(1*rewAvailable); 
     updateWindow.valueUpdated(false); % reset to indicate that we've updated everything
     updateWindow.updateTrial(); % Update all features of GUI
+    updateWindow.updatePosition(runInfo.roomPosition, 0); % updateTrial resets the gauge to 0
 else
     % Set TRIAL values (update each trial)
     trialInfo.trialIdx(runInfo.currTrial) = runInfo.currTrial; % call me crazy
@@ -86,7 +87,12 @@ else
 
     % Check if updateWindow is active and still open, then do update
     if expInfo.useUpdateWindow && isvalid(updateWindow)
-        updateWindow.updateTrial(runInfo.currTrial, expInfo, rewAvailable, runInfo.vrEnvs{runInfo.vrEnvIdx}(:,:,:,1));
+        % Preview the frame at this trial's (possibly jittered) start, same mapping as operateTrial
+        numVRFrames = size(runInfo.vrEnvs{runInfo.vrEnvIdx},4);
+        startFrame = round(runInfo.roomPosition / expInfo.roomLength(runInfo.currTrial) * numVRFrames);
+        startFrame = min(numVRFrames, max(1, startFrame));
+        updateWindow.updateTrial(runInfo.currTrial, expInfo, rewAvailable, runInfo.vrEnvs{runInfo.vrEnvIdx}(:,:,:,startFrame));
+        updateWindow.updatePosition(runInfo.roomPosition, 0); % updateTrial resets the gauge to 0
     end
 end
 
