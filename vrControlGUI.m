@@ -250,8 +250,16 @@ classdef vrControlGUI < matlab.apps.AppBase
             app.vrNumRandTrials = app.randomLengthMean.Value * ones(numEnv,1);
             for vrenv = 1:numEnv
                 cpath = fullfile(app.vrDirectory.Value,vrList(vrenv).name);
-                ctifinfo = imfinfo(cpath);
-                numFrames = length(ctifinfo);
+                % Count frames with a Tiff object (imfinfo parses every tag of every frame)
+                warnState = warning('off','imageio:tiffutils:libtiffWarning');
+                tifObj = Tiff(cpath,'r');
+                numFrames = 1;
+                while ~tifObj.lastDirectory
+                    tifObj.nextDirectory();
+                    numFrames = numFrames + 1;
+                end
+                tifObj.close();
+                warning(warnState);
                 app.vrFrames(vrenv) = numFrames;
                 app.vrFramesDS(vrenv) = numFrames;
             end

@@ -192,9 +192,19 @@ for vrOpt = 1:numOptions
     fprintf(1, '#ATL: Loading %s, downsampling from %i frames to %i frames (dsratio:%i)...\n',...
         trialStructure.getEnvName(vrOpt), expSettings.vrFrames(vrOpt), expSettings.vrFramesDS(vrOpt), expSettings.vrDSFactor(vrOpt));
     runInfo.vrEnvs{vrOpt} = zeros(height,width,3,numVrFrames,'uint8');
+    % Open the tif once and step through frames (imread(path,idx) reopens and
+    % re-seeks the file for every frame, ~2.5x slower from the server)
+    warnState = warning('off','imageio:tiffutils:libtiffWarning'); % unknown-tag warnings
+    tifObj = Tiff(cpath,'r'); % starts at frame 1
     for f = 1:numVrFrames
-        runInfo.vrEnvs{vrOpt}(:,:,:,f) = uint8(imread(cpath,(f-1)*expSettings.vrDSFactor(vrOpt)+1));
+        runInfo.vrEnvs{vrOpt}(:,:,:,f) = uint8(tifObj.read());
+        if f < numVrFrames
+            % step forward sequentially (setDirectory re-scans from the start each call)
+            for k = 1:expSettings.vrDSFactor(vrOpt), tifObj.nextDirectory(); end
+        end
     end
+    tifObj.close();
+    warning(warnState);
 end
 
 
