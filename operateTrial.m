@@ -267,6 +267,11 @@ Screen('FillRect', hwInfo.screenInfo.windowPtr, runInfo.pdLevel*255, hwInfo.phot
 Screen('Flip', hwInfo.screenInfo.windowPtr,vbl+(waitframes-0.5)*ifi,0);
 runInfo.pdLevel = mod(runInfo.pdLevel+1,2);
 
+% Gray out the experimenter preview too, so it matches the blank VR screen during the ITI
+if expInfo.useUpdateWindow && isvalid(updateWindow)
+    updateWindow.printPreview(127*ones(size(frame2show), 'uint8'));
+end
+
 % Start ITI Timer
 runInfo.ititimer = tic;
 
