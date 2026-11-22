@@ -178,10 +178,12 @@ runInfo.trainingTimer = tic;
 numOptions = length(expSettings.vrOptions);
 idxInUse = unique(trialStructure.envIndex);
 runInfo.vrEnvs = cell(1,numOptions);
-fprintf(1, '#ATL: Loading environments from: %s\n', expSettings.vrDirectory);
+% Read from the local mirror of the server folder (sync is ~1s when nothing changed)
+vrLocalDirectory = syncVrDirectory(expSettings.vrDirectory);
+fprintf(1, '#ATL: Loading environments from: %s (local copy: %s)\n', expSettings.vrDirectory, vrLocalDirectory);
 for vrOpt = 1:numOptions
     if ~ismember(vrOpt, idxInUse), continue, end % only load environments that are in use
-    cpath = trialStructure.getEnvPath(vrOpt);
+    cpath = fullfile(vrLocalDirectory, sprintf('%s%s', trialStructure.getEnvName(vrOpt), expSettings.vrExtension));
     vrTifInfo = imfinfo(cpath);
     height = vrTifInfo(1).Height;
     width = vrTifInfo(1).Width;

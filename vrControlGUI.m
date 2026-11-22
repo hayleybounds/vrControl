@@ -138,6 +138,7 @@ classdef vrControlGUI < matlab.apps.AppBase
     
     properties (Access = private)
         validDirectory = false; % boolean variable, flips when there's a valid vrDirectory
+        vrLocalDirectory = ''; % local mirror of vrDirectory that files are actually read from (see syncVrDirectory)
         environmentInfo = zeros(0,9); % #Frames, RewardPosition, RewardPosType, Order
         vrLength
         vrFrames
@@ -205,12 +206,15 @@ classdef vrControlGUI < matlab.apps.AppBase
             figure(app.UIFigure);
             if nargin<3, startupSwitch = false; end
             if isempty(newDirectory), return; end
-            if exist(newDirectory, 'dir')
+            % Mirror server folders to this rig; files are read from the local copy
+            localDirectory = syncVrDirectory(newDirectory);
+            if exist(localDirectory, 'dir')
                 % Make sure vrDirectory ends in fileseparator
                 if ~strcmp(newDirectory(end),filesep)
-                    newDirectory(end+1) = filesep; 
+                    newDirectory(end+1) = filesep;
                 end
                 app.validDirectory = true;
+                app.vrLocalDirectory = localDirectory;
                 app.vrDirectory.Value = persistentVariables('vrDirectory', newDirectory);
                 activateEnvironmentOptions(app) % this activates all environment options from vrDirectory
                 presentMessage(app, 'New vrDirectory selected, options reset throughout app.', 1)
@@ -234,7 +238,7 @@ classdef vrControlGUI < matlab.apps.AppBase
             end
             % Look for vr environment files and populate menu
             vrExt = standardizeExtension(app);
-            vrList = dir(fullfile(app.vrDirectory.Value,['*',vrExt]));
+            vrList = dir(fullfile(app.vrLocalDirectory,['*',vrExt]));
             numEnv = length(vrList);
 
             % Build Environment Info Array
@@ -249,7 +253,7 @@ classdef vrControlGUI < matlab.apps.AppBase
             app.vrNumPresetTrials = app.envTrials.Value * ones(numEnv,1);
             app.vrNumRandTrials = app.randomLengthMean.Value * ones(numEnv,1);
             for vrenv = 1:numEnv
-                cpath = fullfile(app.vrDirectory.Value,vrList(vrenv).name);
+                cpath = fullfile(app.vrLocalDirectory,vrList(vrenv).name);
                 % Count frames with a Tiff object (imfinfo parses every tag of every frame)
                 warnState = warning('off','imageio:tiffutils:libtiffWarning');
                 tifObj = Tiff(cpath,'r');
